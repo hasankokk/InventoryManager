@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using InventoryManager.Data;
 using InventoryManager.Models.DTOs.Container;
+using InventoryManager.Models.DTOs.Item;
 using InventoryManager.Models.DTOs.Tag;
 using InventoryManager.Models.Entities;
+using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +13,8 @@ namespace InventoryManager.Controllers;
 
 [ApiController]
 [Route("/tag")]
+[Authorize(Policy = "Administrator")]
+
 public class TagController(AppDbContext context) : ControllerBase
 {
     [HttpPost]
@@ -43,7 +48,7 @@ public class TagController(AppDbContext context) : ControllerBase
         };
         return Ok(listTag);
     }
-
+    
     [HttpPut]
     [Route("{id:int:min(1)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -1,11 +1,8 @@
 using InventoryManager.Data;
-using InventoryManager.Models.DTOs.Container;
-using InventoryManager.Models.DTOs.Item;
-using InventoryManager.Models.DTOs.Location;
-using InventoryManager.Models.Entities;
-using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using InventoryManager.Config;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,30 +11,27 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(opt => 
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdministratorRole",
+        policy => policy.RequireRole("Administrator"));
+});
+builder.Services.AddIdentityApiEndpoints<IdentityUser>(opt =>
+    {
+        opt.Password.RequiredLength = 1;
+        opt.Password.RequireNonAlphanumeric = false;
+        opt.Password.RequireUppercase = false;
+        opt.Password.RequireLowercase = false;
+        opt.Password.RequiredUniqueChars = 0;
+        opt.Password.RequireDigit = false;
+        opt.Password.RequiredUniqueChars = 0;
+        opt.SignIn.RequireConfirmedEmail = false;
+    })
+    .AddEntityFrameworkStores<AppDbContext>();
+
 builder.Services.AddOpenApi();
 
-TypeAdapterConfig.GlobalSettings.Default.IgnoreNullValues(true);
-
-TypeAdapterConfig<Container, ContainerListWithLocation>
-    .NewConfig()
-    .Map(x => x.LocationName, x => x.Location.Name);
-
-TypeAdapterConfig<ItemCreateDto, Item>
-    .NewConfig()
-    .Ignore(x => x.Tags);
-
-TypeAdapterConfig<ItemListDto, Item>
-    .NewConfig()
-    .Ignore(x => x.Tags)
-    .Map(x => x.Container.Name, i => i.ContainerName);
-
-TypeAdapterConfig<Item, ItemListDto>
-    .NewConfig()
-    .Map(x => x.ContainerName, x => x.Container.Name);
-
-TypeAdapterConfig<ItemUpdateDto, Item>
-    .NewConfig()
-    .Ignore(x => x.Tags);
 
 var app = builder.Build();
 
@@ -49,8 +43,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
+//app.UseAuthorization();
 
 app.MapControllers();
+app.MapGroup("Auth").MapIdentityApi<IdentityUser>().WithTags("Auth");
+MappingConfig.RegisterMappings();
+
 
 app.Run();

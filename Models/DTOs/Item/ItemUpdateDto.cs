@@ -12,5 +12,5 @@ public class ItemUpdateDto
     public DateOnly? STT { get; set; }
     public int? ContainerId { get; set; }
     public bool IsAdded { get; set; } = true;
-    public List<int> Tags { get; set; }
+    public List<int?> Tags { get; set; }
 }

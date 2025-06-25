@@ -4,13 +4,14 @@ using InventoryManager.Models.Entities;
 using InventoryManager.Models.DTOs;
 using InventoryManager.Models.DTOs.Container;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManager.Controllers;
 
 [ApiController]
 [Route("/container")]
-
+[Authorize(Policy = "Administrator")]
 public class ContainerController(AppDbContext context) : ControllerBase
 {
     [HttpPost]

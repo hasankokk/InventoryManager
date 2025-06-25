@@ -3,12 +3,15 @@ using InventoryManager.Models.DTOs.Location;
 using InventoryManager.Models.Entities;
 using Scalar;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManager.Controllers;
 [ApiController]
 [Route("/location")]
+[Authorize(Policy = "Administrator")]
+
 public class LocationController(AppDbContext context) : ControllerBase
 {
     [HttpPost]

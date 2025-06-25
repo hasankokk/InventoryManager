@@ -2,6 +2,7 @@ using InventoryManager.Data;
 using InventoryManager.Models.DTOs.Item;
 using InventoryManager.Models.Entities;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace InventoryManager.Controllers;
 
 [ApiController]
 [Route("/item")]
+//[Authorize]
 public class ItemController(AppDbContext context) : ControllerBase
 {
     [HttpPost]
@@ -31,7 +33,76 @@ public class ItemController(AppDbContext context) : ControllerBase
         item.Tags = context.Tags.Where(x => dto.Tags.Contains(x.Id)).ToList();
         context.Items.Add(item);
         context.SaveChanges();
-        return CreatedAtRoute("DefaultApi", new { controller = "Item", id = item.Id }, item);
+        return Created("/item/{id}", dto);
+    }
+    [HttpGet]
+    [Route("")]
+    [ProducesResponseType<ItemListDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetAll(string? search = null)
+    {
+        var keywords = (search ?? "")
+            .Split(" ", StringSplitOptions.RemoveEmptyEntries);
+        
+        var items = context.Items
+            .Include(x => x.Container)
+            .Include(x => x.Tags)
+            .ToList();
+        
+        if (keywords.Length == 0 && search == null)
+        {
+            var allItems = items.Select(x => new ItemListDto
+            {
+                Name = x.Name,
+                Description = x.Description,
+                ContainerName = x.Container?.Name,
+                TagName = x.Tags?.Select(t => t.Name).ToList()
+            }).ToList();
+            return Ok(allItems);
+        }
+
+        var filtered = items
+            .Where(item =>
+                keywords.Any(word =>
+                    item.Name != null &&
+                    item.Name.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            .GroupBy(x => x.Id)
+            .Select(g => g.First())
+            .ToList();
+
+        var result = filtered.Select(x => new ItemListDto
+        {
+            Name = x.Name,
+            Description = x.Description,
+            ContainerName = x.Container?.Name,
+            TagName = x.Tags?.Select(t => t.Name).ToList()
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    [HttpGet]
+    [Route("/item/filter")]
+    [ProducesResponseType<ItemListDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetByTag(string? search = null)
+    {
+        var items = context.Items
+            .Include(x => x.Container)
+            .Include(x => x.Tags)
+            .Where(x => x.Tags.Any(t => t.Name == search)).ToList();
+        List<ItemFilterDto> filters = new List<ItemFilterDto>();
+        foreach (var item in items)
+        {
+            if (item.Tags.Any(t => t.Name == search))
+            {
+                filters.Add(item.Adapt<ItemFilterDto>());
+            }
+        }
+
+        if (filters.Count == 0)
+            return NotFound("Aramanıza uyuşan hiçbir kayıt bulunmamaktadır.");
+        return Ok(filters);
     }
 
     [HttpGet]
@@ -57,6 +128,7 @@ public class ItemController(AppDbContext context) : ControllerBase
         var item =  context.Items.Where(x => x.Id == id).Include(t => t.Tags).Include(c => c.Container).FirstOrDefault();
         if (item == null)
             return NotFound();
+        
         dto.Adapt(item);
         
         if (dto.Tags != null && dto.Tags.Any())
