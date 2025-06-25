@@ -106,6 +106,58 @@ public class ItemController(AppDbContext context) : ControllerBase
     }
 
     [HttpGet]
+    [Route("/item/list")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetBySTTFilter(bool onlyExpired = false, bool onlyApproaching = false, int limit = 0, int skip = 0)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var next7Days = today.AddDays(7);
+
+        var items = context.Items
+            .Include(x => x.Container)
+            .Include(x => x.Tags)
+            .ToList();
+
+        var filtered = items.Where(x => x.STT.HasValue).ToList();
+        
+        //Tarihi geçmiş itemler
+        if (onlyExpired)
+        {
+            filtered = filtered
+                .Where(x => x.STT < today)
+                .OrderByDescending(x => x.STT)
+                .ToList();
+        }
+        //tarihi yaklaşanlar
+        else if (onlyApproaching)
+        {
+            filtered = filtered
+                .Where(x => x.STT >= today && x.STT <= next7Days)
+                .OrderBy(x => x.STT)
+                .ToList();
+        }
+
+        if (skip > 0)
+            filtered = filtered.Skip(skip).ToList();
+        if (limit > 0)
+            filtered = filtered.Take(limit).ToList();
+
+        var result = filtered.Select(x => new ItemListDto
+        {
+            Name = x.Name,
+            Description = x.Description,
+            ItemCount = x.ItemCount,
+            STT = x.STT!.Value,
+            TagName = x.Tags.Select(t => t.Name).ToList(),
+            ContainerName = x.Container?.Name
+        }).ToList();
+
+        return Ok(result);
+    }
+
+
+    [HttpGet]
     [Route("{id:int:min(1)}")]
     [ProducesResponseType<ItemListDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
