@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManager.Models.Entities;
 
+[Index(nameof(Name), IsUnique = true)]
 public class Item
 {
     public int Id { get; set; }
@@ -13,7 +15,7 @@ public class Item
     public DateOnly? STT { get; set; }
     public int ContainerId { get; set; }
     public Container Container { get; set; }
-    public ICollection<Tag> Tags { get; set; }
+    public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public DateTime Created { get; set; } = DateTime.Now;
     public DateTime Updated { get; set; }
 }

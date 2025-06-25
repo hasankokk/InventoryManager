@@ -7,4 +7,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
    public DbSet<Item> Items { get; set; }
    public DbSet<Container> Containers { get; set; }
+   public DbSet<Location> Locations { get; set; }
+   public DbSet<Tag> Tags { get; set; }
 }
