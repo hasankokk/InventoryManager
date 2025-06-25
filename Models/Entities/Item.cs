@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManager.Models.Entities;
@@ -13,6 +14,10 @@ public class Item
     public string? Description { get; set; }
     public int ItemCount { get; set; }
     public DateOnly? STT { get; set; }
+    
+    public string UserId { get; set; }
+    public IdentityUser User { get; set; }
+    
     public int ContainerId { get; set; }
     public Container Container { get; set; }
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();

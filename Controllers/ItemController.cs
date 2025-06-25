@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using InventoryManager.Data;
 using InventoryManager.Models.DTOs.Item;
 using InventoryManager.Models.Entities;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,15 +12,16 @@ namespace InventoryManager.Controllers;
 
 [ApiController]
 [Route("/item")]
-//[Authorize]
+[Authorize]
 public class ItemController(AppDbContext context) : ControllerBase
 {
     [HttpPost]
     [Route("")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType<ItemListWithUserDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult Add(ItemCreateDto dto)
     { 
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
         if (!context.Containers.Any(c => c.Id == dto.ContainerId))
             return BadRequest("Geçersiz Container.");
         
@@ -30,10 +33,12 @@ public class ItemController(AppDbContext context) : ControllerBase
         }
         
         var item = dto.Adapt<Item>();
+        item.UserId = userId;
         item.Tags = context.Tags.Where(x => dto.Tags.Contains(x.Id)).ToList();
         context.Items.Add(item);
         context.SaveChanges();
-        return Created("/item/{id}", dto);
+        item.User = context.Users.FirstOrDefault(x => x.Id == userId);
+        return Created("/item/{id}", item.Adapt<ItemListWithUserDto>());
     }
     [HttpGet]
     [Route("")]
@@ -41,10 +46,12 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult GetAll(string? search = null)
     {
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+
         var keywords = (search ?? "")
             .Split(" ", StringSplitOptions.RemoveEmptyEntries);
         
-        var items = context.Items
+        var items = context.Items.Where(x => x.UserId == userId)
             .Include(x => x.Container)
             .Include(x => x.Tags)
             .ToList();
@@ -87,7 +94,10 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult GetByTag(string? search = null)
     {
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+
         var items = context.Items
+            .Where(x => x.UserId == userId)
             .Include(x => x.Container)
             .Include(x => x.Tags)
             .Where(x => x.Tags.Any(t => t.Name == search)).ToList();
@@ -111,10 +121,13 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult GetBySTTFilter(bool onlyExpired = false, bool onlyApproaching = false, int limit = 0, int skip = 0)
     {
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+
         var today = DateOnly.FromDateTime(DateTime.Today);
         var next7Days = today.AddDays(7);
 
         var items = context.Items
+            .Where(x => x.UserId == userId)
             .Include(x => x.Container)
             .Include(x => x.Tags)
             .ToList();
@@ -163,7 +176,11 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Get(int id)
     {
-        var item = context.Items.Where(x => x.Id == id).Include(t => t.Tags).Include(c => c.Container).FirstOrDefault();
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+        var item = context.Items
+            .Where(x => x.UserId == userId)
+            .Where(x => x.Id == id).Include(t => t.Tags).Include(c => c.Container).FirstOrDefault();
         if (item == null)
             return NotFound();
         var result = item.Adapt<ItemListDto>();
@@ -177,7 +194,10 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Update(int id, ItemUpdateDto dto)
     {
-        var item =  context.Items.Where(x => x.Id == id).Include(t => t.Tags).Include(c => c.Container).FirstOrDefault();
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+        var item =  context.Items
+            .Where(x => x.UserId == userId)
+            .Where(x => x.Id == id).Include(t => t.Tags).Include(c => c.Container).FirstOrDefault();
         if (item == null)
             return NotFound();
         
@@ -218,7 +238,8 @@ public class ItemController(AppDbContext context) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Delete(int id)
     {
-        var item = context.Items.Find(id);
+        var userId = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+        var item = context.Items.Where(x=> x.UserId == userId).FirstOrDefault(x => x.Id == id);
         if (item == null)
             return NotFound();
         context.Items.Remove(item);

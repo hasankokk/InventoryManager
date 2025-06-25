@@ -17,7 +17,8 @@ public class MappingConfig
 
         TypeAdapterConfig<ItemCreateDto, Item>
             .NewConfig()
-            .Ignore(x => x.Tags);
+            .Ignore(x => x.Tags)
+            .Ignore(x => x.UserId);
 
         TypeAdapterConfig<ItemListDto, Item>
             .NewConfig()
@@ -31,5 +32,9 @@ public class MappingConfig
         TypeAdapterConfig<ItemUpdateDto, Item>
             .NewConfig()
             .Ignore(x => x.Tags);
+
+        TypeAdapterConfig<Item, ItemListWithUserDto>
+            .NewConfig()
+            .Map(x => x.Username, x => x.User.UserName);
     }
 }

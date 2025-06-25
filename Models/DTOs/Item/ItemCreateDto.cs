@@ -13,6 +13,8 @@ public class ItemCreateDto
     [Range(1, int.MaxValue)]
     public int ItemCount { get; set; }
     public DateOnly? STT { get; set; }
+    
+    public string? UserId { get; set; }
     public int ContainerId { get; set; }
     public List<int> Tags { get; set; }
 }
